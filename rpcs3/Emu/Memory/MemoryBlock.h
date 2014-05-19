@@ -79,6 +79,7 @@ protected:
 	u8* mem;
 	u64 range_start;
 	u64 range_size;
+	u64 range_end; // inclusive
 
 public:
 	MemoryBlock();
@@ -124,7 +125,7 @@ public:
 	virtual bool Write128(const u64 addr, const u128 value);
 
 	const u64 GetStartAddr() const { return range_start; }
-	const u64 GetEndAddr() const { return GetStartAddr() + GetSize() - 1; }
+	const u64 GetEndAddr() const { return range_end; }
 	virtual const u32 GetSize() const { return range_size; }
 	virtual const u32 GetUsedSize() const { return GetSize(); }
 	u8* GetMem() const { return mem; }
@@ -163,6 +164,7 @@ public:
 	{
 		range_start = start;
 		range_size = size;
+		range_end = GetStartAddr() + GetSize() - 1;
 
 		return this;
 	}
