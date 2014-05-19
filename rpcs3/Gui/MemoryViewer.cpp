@@ -191,20 +191,26 @@ void MemoryViewerPanel::ShowMemory()
 		t_mem_addr_str += wxString::Format("%08x ", addr);
 	}
 
-	for(u32 addr = m_addr; addr != m_addr + m_rowcount * m_colcount; addr++)
+	for (int row = 0; row < m_rowcount; row++) 
 	{
-		if (Memory.IsGoodAddr(addr))
+		for (int col = 0; col < m_colcount; col++) 
 		{
-			const u8 rmem = Memory.Read8(addr);
-			t_mem_hex_str += wxString::Format("%02x ", rmem);
-			const wxString c_rmem = wxString::Format("%c", rmem);
-			t_mem_ascii_str += c_rmem.IsEmpty() ? "." : c_rmem;
+			u32 addr = m_addr + row * m_colcount + col;	
+
+			if (Memory.IsGoodAddr(addr))
+			{
+				const u8 rmem = Memory.Read8(addr);
+				t_mem_hex_str += wxString::Format("%02x ", rmem);
+				const bool isPrintable = rmem >= 32 && rmem <= 126;
+				t_mem_ascii_str += isPrintable ? std::string(1, rmem) : ".";
+			}
+			else
+			{
+				t_mem_hex_str += "?? ";
+				t_mem_ascii_str += "?";
+			}
 		}
-		else
-		{
-			t_mem_hex_str += "?? ";
-			t_mem_ascii_str += "?";
-		}
+		t_mem_ascii_str += "\r\n";
 	}
 
 	t_mem_addr->SetValue(t_mem_addr_str);
@@ -224,52 +230,59 @@ void MemoryViewerPanel::ShowImage(wxWindow* parent, u32 addr, int mode, u32 widt
 	f_image_viewer->Show();
 	wxClientDC dc_canvas(f_image_viewer);
 
+	// TODO: The implementation is flawed if memory range contains more than one address mapping.
+	size_t convertedBufferSize = width * height * 3;
 	unsigned char* originalBuffer  = (unsigned char*)Memory.VirtualToRealAddr(addr);
-	unsigned char* convertedBuffer = (unsigned char*)malloc(width * height * 3);
-	switch(mode)
+	unsigned char* convertedBuffer = (unsigned char*)malloc(convertedBufferSize);
+	if (originalBuffer == nullptr)
+		memset(convertedBuffer, 0, convertedBufferSize);
+	else 
 	{
-	case(0): // RGB
-		memcpy(convertedBuffer, originalBuffer, width * height * 3);
-	break;
+		switch(mode)
+		{
+		case(0): // RGB
+			memcpy(convertedBuffer, originalBuffer, convertedBufferSize);
+		break;
 
-	case(1): // ARGB
-		for (u32 y=0; y<height; y++){
-			for (u32 i=0, j=0; j<width*4; i+=3, j+=4){
-				convertedBuffer[i+0 + y*width*3] = originalBuffer[j+1 + y*width*4];
-				convertedBuffer[i+1 + y*width*3] = originalBuffer[j+2 + y*width*4];
-				convertedBuffer[i+2 + y*width*3] = originalBuffer[j+3 + y*width*4];
+		case(1): // ARGB
+			for (u32 y=0; y<height; y++){
+				for (u32 i=0, j=0; j<width*4; i+=3, j+=4){
+					convertedBuffer[i+0 + y*width*3] = originalBuffer[j+1 + y*width*4];
+					convertedBuffer[i+1 + y*width*3] = originalBuffer[j+2 + y*width*4];
+					convertedBuffer[i+2 + y*width*3] = originalBuffer[j+3 + y*width*4];
+				}
 			}
-		}
-	break;
+		break;
 
-	case(2): // RGBA
-		for (u32 y=0; y<height; y++){
-			for (u32 i=0, j=0; j<width*4; i+=3, j+=4){
-				convertedBuffer[i+0 + y*width*3] = originalBuffer[j+0 + y*width*4];
-				convertedBuffer[i+1 + y*width*3] = originalBuffer[j+1 + y*width*4];
-				convertedBuffer[i+2 + y*width*3] = originalBuffer[j+2 + y*width*4];
+		case(2): // RGBA
+			for (u32 y=0; y<height; y++){
+				for (u32 i=0, j=0; j<width*4; i+=3, j+=4){
+					convertedBuffer[i+0 + y*width*3] = originalBuffer[j+0 + y*width*4];
+					convertedBuffer[i+1 + y*width*3] = originalBuffer[j+1 + y*width*4];
+					convertedBuffer[i+2 + y*width*3] = originalBuffer[j+2 + y*width*4];
+				}
 			}
-		}
-	break;
+		break;
 
-	case(3): // ABGR
-		for (u32 y=0; y<height; y++){
-			for (u32 i=0, j=0; j<width*4; i+=3, j+=4){
-				convertedBuffer[i+0 + y*width*3] = originalBuffer[j+3 + y*width*4];
-				convertedBuffer[i+1 + y*width*3] = originalBuffer[j+2 + y*width*4];
-				convertedBuffer[i+2 + y*width*3] = originalBuffer[j+1 + y*width*4];
+		case(3): // ABGR
+			for (u32 y=0; y<height; y++){
+				for (u32 i=0, j=0; j<width*4; i+=3, j+=4){
+					convertedBuffer[i+0 + y*width*3] = originalBuffer[j+3 + y*width*4];
+					convertedBuffer[i+1 + y*width*3] = originalBuffer[j+2 + y*width*4];
+					convertedBuffer[i+2 + y*width*3] = originalBuffer[j+1 + y*width*4];
+				}
 			}
+		break;
 		}
-	break;
-	}
 
-	// Flip vertically
-	if (flipv){
-		for (u32 y=0; y<height/2; y++){
-			for (u32 x=0; x<width*3; x++){
-				const u8 t = convertedBuffer[x + y*width*3];
-				convertedBuffer[x + y*width*3] = convertedBuffer[x + (height-y-1)*width*3];
-				convertedBuffer[x + (height-y-1)*width*3] = t;
+		// Flip vertically
+		if (flipv){
+			for (u32 y=0; y<height/2; y++){
+				for (u32 x=0; x<width*3; x++){
+					const u8 t = convertedBuffer[x + y*width*3];
+					convertedBuffer[x + y*width*3] = convertedBuffer[x + (height-y-1)*width*3];
+					convertedBuffer[x + (height-y-1)*width*3] = t;
+				}
 			}
 		}
 	}
