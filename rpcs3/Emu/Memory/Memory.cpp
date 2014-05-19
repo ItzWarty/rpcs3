@@ -20,6 +20,7 @@ void MemoryBlock::Init()
 {
 	range_start = 0;
 	range_size = 0;
+	range_end = GetStartAddr() + GetSize() - 1;
 
 	mem = nullptr;
 }
@@ -80,6 +81,7 @@ MemoryBlock* MemoryBlock::SetRange(const u64 start, const u32 size)
 {
 	range_start = start;
 	range_size = size;
+	range_end = GetStartAddr() + GetSize() - 1;
 
 	InitMemory();
 	return this;
@@ -515,6 +517,7 @@ MemoryBlock* VirtualMemoryBlock::SetRange(const u64 start, const u32 size)
 {
 	range_start = start;
 	range_size = size;
+	range_end = GetStartAddr() + GetSize() - 1;
 
 	return this;
 }

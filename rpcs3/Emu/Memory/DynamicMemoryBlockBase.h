@@ -25,13 +25,15 @@ const u32 DynamicMemoryBlockBase<PT>::GetUsedSize() const
 template<typename PT>
 bool DynamicMemoryBlockBase<PT>::IsInMyRange(const u64 addr)
 {
-	return addr >= MemoryBlock::GetStartAddr() && addr < MemoryBlock::GetStartAddr() + GetSize();
+	return addr >= MemoryBlock::GetStartAddr() && addr <= MemoryBlock::GetEndAddr();
 }
 
 template<typename PT>
 bool DynamicMemoryBlockBase<PT>::IsInMyRange(const u64 addr, const u32 size)
 {
-	return IsInMyRange(addr) && IsInMyRange(addr + size - 1);
+	return MemoryBlock::GetStartAddr() <= addr && 
+		    addr + size - 1 <= MemoryBlock::GetEndAddr();
+	//return IsInMyRange(addr) && IsInMyRange(addr + size - 1);
 }
 
 template<typename PT>
